@@ -10,7 +10,7 @@ ____
 
 ***Branch: tdd-0001-create-model***
 
-Create a new test class named CustomerTest in the package ***de.xakte.springboottdd.model.CustomerTest***
+Create a new test class named CustomerTest in the package *de.xakte.springboottdd.model.CustomerTest*
 
 ```java
 package de.xakte.springboottdd.model;
@@ -88,7 +88,7 @@ ____
 
 ***Branch: tdd-0003-object-mapping***
 
-Create a new test class named CustomerMappingTest in the package ***de.xakte.springboottdd.model.CustomerMappingTest***
+Create a new test class named CustomerMappingTest in the package *de.xakte.springboottdd.model.CustomerMappingTest*
 ```java
 package de.xakte.springboottdd.model;
 
@@ -136,13 +136,12 @@ public class Customer {
 }
 ``` 
 Run the test CustomerMappingTest again and the test will successful passed.
-
 ____
 **TDD - 0003 - Customer repository**
 
 ***Branch: tdd-0003-customer-repository***
 
-Create a new test class ***de.xakte.springboottdd.repository.CustomerRepositoryTest***
+Create a new test class *de.xakte.springboottdd.repository.CustomerRepositoryTest*
 
 ```java
 package de.xakte.springboottdd.repository;
@@ -158,7 +157,7 @@ public class CustomerRepositoryTest {
 }
 ``` 
 There is an error because no interface CustomerRepository exist. Create an interface named CustomerRepository in the
-package ***de.xakte.springboottdd.repository.CustomerRepository***
+package *de.xakte.springboottdd.repository.CustomerRepository*
 
 ```java
 package de.xakte.springboottdd.repository;
@@ -195,7 +194,7 @@ public class CustomerRepositoryTest {
 
 Run the test. The test will successful passed.
 
-Now we will test to show all persisted Customer. Add a new test method called ***findAllCustomer()***.<br>
+Now we will test to show all persisted Customer. Add a new test method called *findAllCustomer()*.<br>
 There will four customers created an persisted, than the generic method findAll() of the customerRepository will be
 called, the result is a list of four Coustomer with an id greater than 0.
 
@@ -239,8 +238,7 @@ public class CustomerRepositoryTest {
     }
 }
 ```
-We add a new test method ***findCustomerByFirstNameAndLastName()***.
-
+We add a new test method *findCustomerByFirstNameAndLastName()*.
 ```java
 package de.xakte.springboottdd.repository;
 
@@ -284,7 +282,7 @@ public class CustomerRepositoryTest {
 }
 ```
 There is an error, the method ***findByFirstNameAndLastName(...)*** no exist. Add the Methode in the interface 
-***de.xakte.springboottdd.repository.CustomerRepository***.
+*de.xakte.springboottdd.repository.CustomerRepository*.
 
 ```java
 package de.xakte.springboottdd.repository;
@@ -296,3 +294,278 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 }
 ```
 Run the test again, the the test will passed successfuly.
+____
+**TDD - 0003 - Customer repository**
+
+***Branch: tdd-0003-customer-service***
+
+Create a new test class *de.xakte.springboottdd.service.CustomerServiceTest*.
+
+```java
+package de.xakte.springboottdd.service;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class CustomerServiceTest {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @MockBean
+    private CustomerRepository customerRepository;
+
+    @Test
+    public void findAllCustomers() {
+
+        given(customerRepository.findAll()).willReturn(
+                Arrays.asList(
+                        new Customer(1L, "John", "Doe"),
+                        new Customer(2L, "Jane", "Doe"),
+                        new Customer(3L, "Peter", "Pan"),
+                        new Customer(4L, "Paul", "Nobody")
+                )
+        );
+
+        List<Customer> customers = customerService.findAll();
+
+        assertThat(customers.size()).isEqualTo(4);
+    }
+}
+```
+There is an error because the class ***de.xakte.springboottdd.service.CustomerService*** doesn't exist. Create the customer
+service class.
+```java
+package de.xakte.springboottdd.service;
+
+@Service
+public class CustomerService {
+
+    private CustomerRepository customerRepository; // <- will injected in the constructor below, no @Autowired are required. 
+
+    public CustomerService(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
+    }
+
+    public List<Customer> findAll() {
+        return customerRepository.findAll();
+    }
+}
+```  
+
+Add the test method *findAllCustomers()* 
+as shown below.
+
+```java
+package de.xakte.springboottdd.service;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class CustomerServiceTest {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @MockBean // <- this will inject the mock repository into the service class
+    private CustomerRepository customerRepository;
+
+    @Test
+    public void findAllCustomers() {
+
+        given(customerRepository.findAll()).willReturn( // <- the method findAll() of the CustomerRepository will be mocked
+                Arrays.asList(
+                        new Customer(1L, "John", "Doe"),
+                        new Customer(2L, "Jane", "Doe"),
+                        new Customer(3L, "Peter", "Pan"),
+                        new Customer(4L, "Paul", "Nobody")
+                )
+        );
+
+        List<Customer> customers = customerService.findAll();
+
+        assertThat(customers.size()).isEqualTo(4);
+    }
+}
+```
+Run the test and you will see its successful.
+
+Now wie create a test method *findCustomerByFirstNameAndLastName()* 
+
+```java
+package de.xakte.springboottdd.service;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class CustomerServiceTest {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @MockBean
+    private CustomerRepository customerRepository;
+
+    // @Test public void findAllCustomers() {}
+
+    @Test
+    public void findCustomerByFirstNameAndLastName() {
+        String firstName = "Jane";
+        String lastName = "Doe";
+
+        given(customerRepository.findByFirstNameAndLastName(firstName, lastName)).willReturn(
+                Arrays.asList(
+                        new Customer(2L, "Jane", "Doe")
+                        )
+        );
+
+        List<Customer> customers = customerService.findByFirstNameAndLastName(firstName, lastName);
+
+        assertThat(customers.size()).isEqualTo(1);
+        assertThat(customers.get(0).getFirstName()).isEqualTo(firstName);
+        assertThat(customers.get(0).getLastName()).isEqualTo(lastName);
+    }
+}
+```
+There is again an error, because the method *findByFirstNameAndLastName(...)* is missing. Create the methode in the
+*de.xakte.springboottdd.service.CustomerService* class.
+```java
+package de.xakte.springboottdd.service;
+
+@Service
+public class CustomerService {
+
+    private CustomerRepository customerRepository;
+
+    public CustomerService(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
+    }
+
+    public List<Customer> findAll() {
+        return customerRepository.findAll();
+    }
+
+    public List<Customer> findByFirstNameAndLastName(String firstName, String lastName) {
+        return customerRepository.findByFirstNameAndLastName(firstName,lastName);
+    }
+}
+```  
+Run the test and you will see all is green.
+
+Now we will test to create a new customer. Add the test methode *createNewCustomer()* to the test class.
+
+```java
+package de.xakte.springboottdd.service;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class CustomerServiceTest {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @MockBean
+    private CustomerRepository customerRepository;
+
+    // @Test public void findAllCustomers() {}
+
+    // @Test public void findCustomerByFirstNameAndLastName() {}
+
+    @Test
+    public void createNewCustomer() {
+        Long id = 1L;
+        String firstName = "Jane";
+        String lastName = "Doe";
+        Customer customer = new Customer(null, firstName, lastName);
+
+        given(customerRepository.save(customer)).willReturn(
+                new Customer(id, firstName, lastName)
+        );
+
+        Customer newCustomer = customerService.createCustomer(customer);
+
+        assertThat(newCustomer.getId()).isEqualTo(id);
+        assertThat(newCustomer.getFirstName()).isEqualTo(firstName);
+        assertThat(newCustomer.getLastName()).isEqualTo(lastName);
+    }
+}
+```
+We fix the error and add the missing method in the CustomerService class.
+```java
+package de.xakte.springboottdd.service;
+
+@Service
+public class CustomerService {
+
+    private CustomerRepository customerRepository;
+
+    public CustomerService(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
+    }
+
+    // public List<Customer> findAll() {}
+
+    // public List<Customer> findByFirstNameAndLastName(String firstName, String lastName) {}
+
+    public Customer createCustomer(Customer customer) {
+        return customerRepository.save(customer);
+    }
+}
+``` 
+After run the test yo will see the the test is green. We can create a new customer, search by first name 
+and last name, list all customers. We are missing a method to delete a customer. 
+
+We will create a new test method *deleteCustomer()*.
+
+```java
+package de.xakte.springboottdd.service;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+public class CustomerServiceTest {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @MockBean
+    private CustomerRepository customerRepository;
+
+    //@Test public void findAllCustomers() {}
+
+    //@Test public void findCustomerByFirstNameAndLastName() {}
+
+    //@Test public void createNewCustomer() {}
+
+    @Test
+    public void deleteCustomer() {
+        Customer customer = new Customer(2L, "Jane", "Doe");
+
+        doNothing().when(customerRepository).delete(customer);
+
+        customerService.deleteCustomer(customer);
+
+        verify(customerRepository, times(1)).delete(customer);
+    }
+}
+```
+The error because the missing method will be fixed in the CustomerService class.
+
+```java
+package de.xakte.springboottdd.service;
+
+@Service
+public class CustomerService {
+
+    private CustomerRepository customerRepository;
+
+    //public CustomerService(CustomerRepository customerRepository) {}
+
+    //public List<Customer> findAll() {}
+
+    //public List<Customer> findByFirstNameAndLastName(String firstName, String lastName) {}
+
+    //public Customer createCustomer(Customer customer) {}
+
+    public void deleteCustomer(Customer customer) {
+        customerRepository.delete(customer);
+    }
+}
+```
+We run the test and all is green.
