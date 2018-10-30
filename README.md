@@ -569,3 +569,348 @@ public class CustomerService {
 }
 ```
 We run the test and all is green.
+
+Finally we add the rest controller in tdd manner. We create a new test class.
+
+```java
+package de.xakte.springboottdd.controller;
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(controllers = {CustomerController.class})
+public class CustomerControllerTest {
+
+    @Autowired
+    MockMvc mockMvc;
+
+    @MockBean
+    CustomerService customerService;
+
+    @Test
+    public void getFindAllCustomers() throws Exception {
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/customers"))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+    }
+}
+```
+The first error is the missing class CustomerController, we will add it immediately. As we see below, we inject the
+customer service into the constructor. We add a service get method named getFindAll().
+```java
+package de.xakte.springboottdd.controller;
+
+
+import de.xakte.springboottdd.model.Customer;
+import de.xakte.springboottdd.service.CustomerService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/customers")
+public class CustomerController {
+
+    private CustomerService customerService;
+
+    public CustomerController(CustomerService customerService) {
+        this.customerService = customerService;
+    }
+
+    @GetMapping
+    List<Customer> getFindAll() {
+        return customerService.findAll();
+    }
+}
+```
+We run the test successfully. Now we will check that the service get the valid result, to do that we will mock the findAll() 
+methode of the customer service.
+
+```java
+package de.xakte.springboottdd.controller;
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(controllers = {CustomerController.class})
+public class CustomerControllerTest {
+
+    @Autowired
+    MockMvc mockMvc;
+
+    @MockBean
+    CustomerService customerService;
+
+    @Test
+    public void getFindAllCustomers() throws Exception {
+
+        when(customerService.findAll()).thenReturn(
+                Arrays.asList(
+                        new Customer(1L, "John","Doe"),
+                        new Customer(2L, "Jane","Doe"),
+                        new Customer(3L, "Peter","Pan"),
+                        new Customer(4L, "Paul","Nobody")
+                )
+        );
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/customers"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size()").value(4))
+                .andExpect(jsonPath("$.[0].firstName").value("John"))
+                .andExpect(jsonPath("$.[0].lastName").value("Doe"))
+                .andExpect(jsonPath("$.[3].firstName").value("Paul"))
+                .andExpect(jsonPath("$.[3].lastName").value("Nobody"));
+    }
+}
+```
+As you can see we check the result with the result matcher *MockMvcResultMatchers.jsonPath*, that's a continuous way to
+validate json objects. Now we create a test method to get customer by first and last name.
+
+```java
+package de.xakte.springboottdd.controller;
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(controllers = {CustomerController.class})
+public class CustomerControllerTest {
+
+    @Autowired
+    MockMvc mockMvc;
+
+    @MockBean
+    CustomerService customerService;
+
+    //@Test public void getFindAllCustomers() throws Exception {}
+
+    @Test
+    public void getUserByFirsnameAndLastname() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.get("/customers/John/Doe"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size()").value(1))
+                .andExpect(jsonPath("$.[0].firstName").value("John"))
+                .andExpect(jsonPath("$.[0].lastName").value("Doe"));
+    }
+}
+```
+We run the test and the test will be failed with http error 404. That means that no service endpoint exist in the rest
+controller. We will add the missing method in the customer controlller.
+```java
+package de.xakte.springboottdd.controller;
+
+
+import de.xakte.springboottdd.model.Customer;
+import de.xakte.springboottdd.service.CustomerService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/customers")
+public class CustomerController {
+
+    private CustomerService customerService;
+
+    public CustomerController(CustomerService customerService) {
+        this.customerService = customerService;
+    }
+
+    //@GetMapping List<Customer> getFindAll() {}
+
+    @GetMapping(path = {"/{firstName}/{lastName}"})
+    List<Customer> getFindByFirstNameAndLastName(
+            @PathVariable("firstName") String firstName,
+            @PathVariable("lastName") String lastName
+    ) {
+        return customerService.findByFirstNameAndLastName(firstName, lastName);
+    }
+}
+```   
+We run the test again, and it will fails, because the customer service mock isn't implemented. We will add mock methode.
+```java
+package de.xakte.springboottdd.controller;
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(controllers = {CustomerController.class})
+public class CustomerControllerTest {
+
+    @Autowired
+    MockMvc mockMvc;
+
+    @MockBean
+    CustomerService customerService;
+
+    //@Test public void getFindAllCustomers() throws Exception {}
+
+    @Test
+    public void getUserByFirsnameAndLastname() throws Exception {
+        String firstName = "John";
+        String lastName = "Doe";
+
+        when(customerService.findByFirstNameAndLastName(firstName,lastName)).thenReturn(
+            Arrays.asList(
+                    new Customer(1L, firstName, lastName)
+            )
+        );
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/customers/John/Doe"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size()").value(1))
+                .andExpect(jsonPath("$.[0].firstName").value(firstName))
+                .andExpect(jsonPath("$.[0].lastName").value(lastName));
+    }
+}
+```
+We run the tests successfully. Now we add a test for for the rest endpoint createCustomer.
+```java
+package de.xakte.springboottdd.controller;
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(controllers = {CustomerController.class})
+public class CustomerControllerTest {
+
+    @Autowired
+    MockMvc mockMvc;
+
+    @MockBean
+    CustomerService customerService;
+
+    //@Test public void getFindAllCustomers() throws Exception {}
+
+    //@Test public void getUserByFirsnameAndLastname() throws Exception {}
+
+    @Test
+    public void createUser() throws Exception {
+        Long id = null;
+        String firstName = "John";
+        String lastName = "Doe";
+        Customer customer = new Customer(id, firstName, lastName);
+
+        when(customerService.createCustomer(customer)).thenReturn(
+                new Customer(1L, firstName, lastName)
+        );
+
+        mockMvc.perform(post("/customers")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .accept(MediaType.APPLICATION_JSON_UTF8)
+                .content(objectToJson(customer)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.firstName").value(firstName))
+                .andExpect(jsonPath("$.lastName").value(lastName));
+    }
+
+    private byte[] objectToJson(Object obj) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.writeValueAsBytes(obj);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to map json object");
+        }
+    }
+}
+```
+Because the test failed, we must be implement the rest controller entpoint.
+```Java
+package de.xakte.springboottdd.controller;
+
+@RestController
+@RequestMapping("/customers")
+public class CustomerController {
+
+    private CustomerService customerService;
+
+    public CustomerController(CustomerService customerService) {
+        this.customerService = customerService;
+    }
+
+    //@GetMapping List<Customer> getFindAll() {}
+
+    //@GetMapping(path = {"/{firstName}/{lastName}"}) List<Customer> getFindByFirstNameAndLastName(...)}
+
+    @PostMapping
+    public Customer postCustomer(@RequestBody Customer customer){
+        return customerService.createCustomer(customer);
+    }
+}
+```
+Runnig the test and all is green. The last rest service entpoint will be used to delete a customer. We write the test for
+this scenario. 
+```java
+package de.xakte.springboottdd.controller;
+
+@RunWith(SpringRunner.class)
+@WebMvcTest(controllers = {CustomerController.class})
+public class CustomerControllerTest {
+
+    @Autowired
+    MockMvc mockMvc;
+
+    @MockBean
+    CustomerService customerService;
+
+    //@Test public void getFindAllCustomers() throws Exception {}
+
+    //@Test public void getUserByFirsnameAndLastname() throws Exception {}
+
+    //@Test public void createUser() throws Exception {}
+
+    @Test
+    public void deleteCustomer() throws Exception {
+
+        Long id = 1L;
+        String firstName = "John";
+        String lastName = "Doe";
+        Customer customer = new Customer(id, firstName, lastName);
+
+        doNothing().when(customerService).deleteCustomer(customer);
+
+        mockMvc.perform(delete("/customers")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .accept(MediaType.APPLICATION_JSON_UTF8)
+                .content(objectToJson(customer)))
+                .andDo(print())
+                .andExpect(status().isOk());
+
+        verify(customerService,times(1)).deleteCustomer(customer);
+    }
+
+    private byte[] objectToJson(Object obj) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.writeValueAsBytes(obj);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to map json object");
+        }
+    }
+}
+```
+This test also fails, because there is no rest entpoint to delete a customer. We will add this missing part.
+```java
+package de.xakte.springboottdd.controller;
+
+@RestController
+@RequestMapping("/customers")
+public class CustomerController {
+
+    private CustomerService customerService;
+
+    public CustomerController(CustomerService customerService) {
+        this.customerService = customerService;
+    }
+
+    //@GetMappingList<Customer> getFindAll() {}
+
+    //@GetMapping(path = {"/{firstName}/{lastName}"}) List<Customer> getFindByFirstNameAndLastName(...) {}
+
+    //@PostMapping public Customer postCustomer(@RequestBody Customer customer){}
+
+    @DeleteMapping
+    public void deleteCustomer(@RequestBody Customer customer){
+        customerService.deleteCustomer(customer);
+    }
+}
+```
+We run the test successfully.
+
+Now we have a simple CRUD application test driven developed. 
