@@ -50,10 +50,6 @@ Change the Customer class as below.
 ```java
 package de.xakte.springboottdd.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -90,20 +86,11 @@ Run the test and you see the test will sucessfull passed.
 ____
 **TDD - 0001 - Object Mapping**
 
-***Branch: tdd-0002-object-mapping***
+***Branch: tdd-0003-object-mapping***
 
 Create a new test class named CustomerMappingTest in the package ***de.xakte.springboottdd.model.CustomerMappingTest***
 ```java
 package de.xakte.springboottdd.model;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.test.context.junit4.SpringRunner;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @RunWith(SpringRunner.class)
 @DataJpaTest
@@ -136,15 +123,6 @@ This error means the Customer object is no entity that can persisted. Will will 
 ```java
 package de.xakte.springboottdd.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -158,4 +136,163 @@ public class Customer {
 }
 ``` 
 Run the test CustomerMappingTest again and the test will successful passed.
- 
+
+____
+**TDD - 0003 - Customer repository**
+
+***Branch: tdd-0003-customer-repository***
+
+Create a new test class ***de.xakte.springboottdd.repository.CustomerRepositoryTest***
+
+```java
+package de.xakte.springboottdd.repository;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class CustomerRepositoryTest {
+
+    @Autowired
+    private CustomerRepository customerRepository;
+    
+
+}
+``` 
+There is an error because no interface CustomerRepository exist. Create an interface named CustomerRepository in the
+package ***de.xakte.springboottdd.repository.CustomerRepository***
+
+```java
+package de.xakte.springboottdd.repository;
+
+import de.xakte.springboottdd.model.Customer;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CustomerRepository extends JpaRepository<Customer, Long> {
+}
+```
+Add the test method ***createAndPersistCustomer()***.
+
+```java
+package de.xakte.springboottdd.repository;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class CustomerRepositoryTest {
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+
+    @Test
+    public void createAndPersistCustomer() {
+        Customer customer = new Customer(null, "John", "Doe");
+
+        Customer persistedCustomer = customerRepository.save(customer);
+
+        assertThat(persistedCustomer.getId()).isGreaterThan(0L);
+    }
+}
+```
+
+Run the test. The test will successful passed.
+
+Now we will test to show all persisted Customer. Add a new test method called ***findAllCustomer()***.<br>
+There will four customers created an persisted, than the generic method findAll() of the customerRepository will be
+called, the result is a list of four Coustomer with an id greater than 0.
+
+
+```java
+package de.xakte.springboottdd.repository;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class CustomerRepositoryTest {
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+
+    @Before
+    public void setUp() throws Exception {
+        customerRepository.deleteAll();
+    }
+
+    // @Test public void createAndPersistCustomer() {...}
+
+    @Test
+    public void findAllCustomers() {
+        customerRepository.saveAll(
+                Arrays.asList(
+                        new Customer(null, "John", "Doe"),
+                        new Customer(null, "Jane", "Doe"),
+                        new Customer(null, "Peter", "Pan"),
+                        new Customer(null, "Paul", "Nobody")
+                )
+        );
+
+        List<Customer> customers = customerRepository.findAll();
+
+        assertThat(customers.size()).isEqualTo(4);
+        assertThat(customers.get(0).getId()).isGreaterThan(0L);
+        assertThat(customers.get(1).getId()).isGreaterThan(0L);
+        assertThat(customers.get(2).getId()).isGreaterThan(0L);
+        assertThat(customers.get(3).getId()).isGreaterThan(0L);
+    }
+}
+```
+We add a new test method ***findCustomerByFirstNameAndLastName()***.
+
+```java
+package de.xakte.springboottdd.repository;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class CustomerRepositoryTest {
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
+    @Before
+    public void setUp() throws Exception {
+        customerRepository.deleteAll();
+    }
+
+    // @Test public void createAndPersistCustomer() {}
+
+    // @Test public void findAllCustomers() {...}
+
+    @Test
+    public void findCustomerByFirstNameAndLastName() {
+        customerRepository.saveAll(
+                Arrays.asList(
+                        new Customer(null, "John", "Doe"),
+                        new Customer(null, "Jane", "Doe"),
+                        new Customer(null, "Peter", "Pan"),
+                        new Customer(null, "Paul", "Nobody")
+                )
+        );
+
+        String firstName = "Jane";
+        String lastName = "Doe";
+        
+        List<Customer> customers = customerRepository.findByFirstNameAndLastName( firstName, lastName);
+
+        assertThat(customers.size()).isEqualTo(1);
+        assertThat(customers.get(0).getId()).isGreaterThan(0L);
+        assertThat(customers.get(0).getFirstName()).isEqualTo(firstName);
+        assertThat(customers.get(0).getLastName()).isEqualTo(lastName);
+    }
+}
+```
+There is an error, the method ***findByFirstNameAndLastName(...)*** no exist. Add the Methode in the interface 
+***de.xakte.springboottdd.repository.CustomerRepository***.
+
+```java
+package de.xakte.springboottdd.repository;
+
+public interface CustomerRepository extends JpaRepository<Customer, Long> {
+
+    List<Customer> findByFirstNameAndLastName(String firstName, String lastName);
+
+}
+```
+Run the test again, the the test will passed successfuly.
