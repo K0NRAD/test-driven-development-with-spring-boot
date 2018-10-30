@@ -5,6 +5,7 @@
  - Java:        8
  - Spring Boot: 2.0.6.RELEASE 
 
+____
 **TDD - 0001 - Create Model**
 
 ***Branch: tdd-0001-create-model***
@@ -86,6 +87,75 @@ public class CustomerTest {
 ```
 Run the test and you see the test will sucessfull passed. 
   
+____
+**TDD - 0001 - Object Mapping**
 
+***Branch: tdd-0002-object-mapping***
 
+Create a new test class named CustomerMappingTest in the package ***de.xakte.springboottdd.model.CustomerMappingTest***
+```java
+package de.xakte.springboottdd.model;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class CustomerMappingTest {
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Test
+    public void createAndPersistCustomer() {
+        Long id = null;
+        String firstName = "John";
+        String lastName = "Doe";
+
+        Customer customer = new Customer(id, firstName, lastName);
+
+        Customer persistedCustomer = entityManager.persistAndFlush(customer);
+
+        assertThat(persistedCustomer.getId()).isGreaterThan(0L);
+    }
+}
+```
+
+Run the test an you will see the test ist broken. Why is it broken?
+
+```bash
+java.lang.IllegalArgumentException: Unknown entity: de.xakte.springboottdd.model.Customer
+```
+This error means the Customer object is no entity that can persisted. Will will fix this in the Customer class.
+```java
+package de.xakte.springboottdd.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity // <-- mark class as entity object
+public class Customer {
+    @Id                                             // <- every jpa object need an id field
+    @GeneratedValue(strategy = GenerationType.AUTO) // <- the id will generated automatical
+    private Long id;
+    private String firstName;
+    private String lastName;
+}
+``` 
+Run the test CustomerMappingTest again and the test will successful passed.
  
